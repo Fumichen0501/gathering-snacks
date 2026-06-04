@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="婚禮茶點">
+<meta name="apple-mobile-web-app-title" content="聚會茶點管家">
 <meta name="theme-color" content="#4a6240">
-<title>婚禮茶點管家</title>
+<title>聚會茶點管家</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--sage:#8a9e7e;--sage-light:#c5d4bc;--sage-dark:#4a6240;--cream:#faf7f2;--warm:#f0ead8;--text:#2e2a22;--muted:#7a7060;--border:rgba(138,158,126,0.25);--shadow:0 2px 16px rgba(74,98,64,.10);--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px)}
@@ -224,15 +224,15 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
 </style>
 </head>
 <body>
-<div id="loading"><div class="spin"></div><h1>婚禮茶點管家</h1><p>載入中...</p></div>
+<div id="loading"><div class="spin"></div><h1>聚會茶點管家</h1><p>載入中...</p></div>
 <div id="toast"></div>
 <div class="screen hidden" id="screen-auth">
-  <div class="auth-logo"><h1>🌿 婚禮茶點管家</h1><p>一站式婚禮茶點籌備工具</p></div>
+  <div class="auth-logo"><h1>🌿 聚會茶點管家</h1><p>婚禮・聖誕・復活節・營會・各式聚會</p></div>
   <div class="auth-card">
-    <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">選擇專案進入，或建立新專案</div>
+    <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">選擇活動進入，或建立新活動</div>
     <div id="home-proj-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">載入中...</div></div>
     <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
-      <button class="btn-auth" id="btn-new-proj-home">＋ 建立新婚禮專案</button>
+      <button class="btn-auth" id="btn-new-proj-home">＋ 建立新活動專案</button>
     </div>
   </div>
 </div>
@@ -338,7 +338,8 @@ $('ovl').addEventListener('click',e=>{if(e.target===$('ovl'))closeModal();});
 // AUTH
 document.querySelectorAll('.auth-tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.auth-tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');const l=t.dataset.tab==='login';$('af-login').style.display=l?'block':'none';$('af-reg').style.display=l?'none':'block';}));
 // PROJECT
-async function openProj(pid,pd){P=pd||{id:pid};$('proj-name').textContent=P.name||'婚禮專案';$('proj-sub').textContent=P.wedding_date?'💒 '+P.wedding_date:'';$('invite-code').textContent=P.invite_code||'——';$('inp-wdate').value=P.wedding_date||'';$('inp-budget').value=P.budget||25000;$('inp-guests').value=P.guest_count||150;showScreen('screen-project');switchMode('plan');switchTab('venue');await loadAll();}
+async function openProj(pid,pd){P=pd||{id:pid};const theme=getEventType(P);_PHASES=theme.phases;$('proj-name').textContent=P.name||theme.label;$('proj-sub').textContent=P.wedding_date?(theme.dateIcon+' '+P.wedding_date):'';$('invite-code').textContent=P.invite_code||'——';$('inp-wdate').value=P.wedding_date||'';$('inp-budget').value=P.budget||25000;$('inp-guests').value=P.guest_count||150;// 動態更新日期欄標籤
+const wdLabel=document.querySelector('label[for="inp-wdate"]');if(wdLabel)wdLabel.textContent=theme.dateLabel;showScreen('screen-project');switchMode('plan');switchTab('venue');await loadAll();}
 $('btn-back').addEventListener('click',()=>{showScreen('screen-auth');loadHomeProjList();});
 $('mode-plan').addEventListener('click',()=>switchMode('plan'));
 $('mode-day').addEventListener('click',()=>switchMode('day'));
@@ -540,12 +541,36 @@ $('task-list').addEventListener('change',async e=>{const el=e.target,act=el.data
 $('btn-add-person').addEventListener('click',()=>openModal('person',null));
 
 // TODOS
-const PHASES=[{key:'pre',label:'婚前一個月以上',col:'p0'},{key:'w2',label:'婚前兩週',col:'p1'},{key:'w1',label:'婚前一週',col:'p2'},{key:'d2',label:'婚前兩天',col:'p3'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'當天進行中',col:'p6'},{key:'after',label:'收尾離場',col:'p7'}];
-const CATS=[{key:'buy',icon:'🛒',label:'採購'},{key:'prep',icon:'🍳',label:'製作準備'},{key:'check',icon:'📋',label:'確認'},{key:'pack',icon:'📦',label:'打包運送'},{key:'setup',icon:'🎪',label:'現場佈置'},{key:'wrap',icon:'✅',label:'收尾'}];
-const PRESETS=[['pre','check','確認婚禮日期與時間'],['pre','check','確認場地狀況（廚房/冰箱/插座）'],['pre','check','確認賓客人數，決定各品項份量'],['pre','buy','完成所有餐點與食材比價'],['pre','check','確認各餐點分工人員'],['w2','buy','訂購外購品項（飯糰/麵包等）'],['w2','buy','列出食材採購清單，確認通路'],['w2','check','確認所有器具清單，確認借用/購買'],['w1','buy','採購所有食材'],['w1','buy','採購器具、耗材（紙盤/手套/保鮮袋等）'],['w1','prep','清洗、消毒所有盛裝容器'],['w1','check','與所有幫忙人員確認分工與時間'],['d2','check','再次確認各品項數量，補購不足食材'],['d2','prep','製作可提前做好的點心'],['d1','prep','食材前處理（切片、醃漬、分裝）'],['d1','prep','製作手作點心（主要製作日）'],['d1','pack','清點所有器具，開始裝箱'],['d1','pack','需冷藏食材放入冰箱'],['d0am','pack','最後確認所有食物與器具齊全'],['d0am','pack','食物保冷/保溫處理'],['d0am','pack','裝車/安排運送'],['d0','setup','抵達場地，確認擺放區域'],['d0','setup','擺設茶點桌（容器擺放、佈置）'],['d0','setup','飲料備置（冰塊、杯具）'],['d0','check','確認所有品項皆已擺出'],['after','wrap','收拾剩餘食物'],['after','wrap','清理桌面、垃圾分類'],['after','wrap','歸還借用器具'],['after','wrap','結帳、報帳（實際花費填入採購預算頁）']];
+// ===== 活動類型系統 =====
+const EVENT_TYPES={
+  wedding:{icon:'💒',label:'婚禮',appName:'婚禮茶點管家',sub:'一站式婚禮茶點籌備工具',dateLabel:'婚禮日期',dateIcon:'💒',projPlaceholder:'例：Sarah & John 婚禮茶點',
+    phases:[{key:'pre',label:'婚前一個月以上',col:'p0'},{key:'w2',label:'婚前兩週',col:'p1'},{key:'w1',label:'婚前一週',col:'p2'},{key:'d2',label:'婚前兩天',col:'p3'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'當天進行中',col:'p6'},{key:'after',label:'收尾離場',col:'p7'}],
+    presets:[['pre','check','確認婚禮日期與時間'],['pre','check','確認場地狀況（廚房/冰箱/插座）'],['pre','check','確認賓客人數，決定各品項份量'],['pre','buy','完成所有餐點與食材比價'],['pre','check','確認各餐點分工人員'],['w2','buy','訂購外購品項（飯糰/麵包等）'],['w2','buy','列出食材採購清單，確認通路'],['w2','check','確認所有器具清單，確認借用/購買'],['w1','buy','採購所有食材'],['w1','buy','採購器具、耗材（紙盤/手套/保鮮袋等）'],['w1','prep','清洗、消毒所有盛裝容器'],['w1','check','與所有幫忙人員確認分工與時間'],['d2','check','再次確認各品項數量，補購不足食材'],['d2','prep','製作可提前做好的點心'],['d1','prep','食材前處理（切片、醃漬、分裝）'],['d1','prep','製作手作點心（主要製作日）'],['d1','pack','清點所有器具，開始裝箱'],['d1','pack','需冷藏食材放入冰箱'],['d0am','pack','最後確認所有食物與器具齊全'],['d0am','pack','食物保冷/保溫處理'],['d0am','pack','裝車/安排運送'],['d0','setup','抵達場地，確認擺放區域'],['d0','setup','擺設茶點桌（容器擺放、佈置）'],['d0','setup','飲料備置（冰塊、杯具）'],['d0','check','確認所有品項皆已擺出'],['after','wrap','收拾剩餘食物'],['after','wrap','清理桌面、垃圾分類'],['after','wrap','歸還借用器具'],['after','wrap','結帳、報帳（實際花費填入採購預算頁）']]},
+  christmas:{icon:'🎄',label:'聖誕晚會',appName:'聖誕晚會茶點管家',sub:'聖誕活動茶點籌備工具',dateLabel:'活動日期',dateIcon:'🎄',projPlaceholder:'例：2025 聖誕感恩晚會',
+    phases:[{key:'pre',label:'一個月前',col:'p0'},{key:'w2',label:'兩週前',col:'p1'},{key:'w1',label:'一週前',col:'p2'},{key:'d2',label:'兩天前',col:'p3'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'活動進行中',col:'p6'},{key:'after',label:'收尾',col:'p7'}],
+    presets:[['pre','check','確認活動日期與場地'],['pre','check','確認預計人數'],['pre','check','規劃聖誕主題點心菜單'],['pre','buy','完成食材與外購品項比價'],['w2','buy','訂購外購品項'],['w2','check','確認器具與佈置道具清單'],['w1','buy','採購食材'],['w1','buy','採購耗材與聖誕裝飾'],['w1','check','確認分工人員'],['d1','prep','製作可提前完成的點心'],['d1','pack','清點器具與食材'],['d0am','pack','最後確認所有食物與器具'],['d0am','pack','食物保冷/保溫處理'],['d0','setup','佈置聖誕茶點桌'],['d0','setup','擺設點心與飲料區'],['d0','check','確認所有品項齊全'],['after','wrap','收拾剩餘食物'],['after','wrap','清理場地'],['after','wrap','歸還借用器具']]},
+  easter:{icon:'🐣',label:'復活節',appName:'復活節茶點管家',sub:'復活節活動茶點籌備工具',dateLabel:'活動日期',dateIcon:'🐣',projPlaceholder:'例：2025 復活節感恩聚會',
+    phases:[{key:'pre',label:'一個月前',col:'p0'},{key:'w2',label:'兩週前',col:'p1'},{key:'w1',label:'一週前',col:'p2'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'活動進行中',col:'p6'},{key:'after',label:'收尾',col:'p7'}],
+    presets:[['pre','check','確認復活節活動日期'],['pre','check','確認預計人數'],['pre','check','規劃復活節主題點心'],['w2','buy','訂購外購品項'],['w1','buy','採購食材'],['w1','check','確認分工人員'],['d1','prep','製作復活節點心'],['d1','pack','清點器具'],['d0am','pack','確認所有食物與器具'],['d0','setup','佈置復活節茶點桌'],['d0','check','確認所有品項齊全'],['after','wrap','收拾與清理場地']]},
+  mothers:{icon:'🌸',label:'母親節',appName:'母親節茶點管家',sub:'母親節活動茶點籌備工具',dateLabel:'活動日期',dateIcon:'🌸',projPlaceholder:'例：2025 母親節感恩下午茶',
+    phases:[{key:'pre',label:'一個月前',col:'p0'},{key:'w2',label:'兩週前',col:'p1'},{key:'w1',label:'一週前',col:'p2'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'活動進行中',col:'p6'},{key:'after',label:'收尾',col:'p7'}],
+    presets:[['pre','check','確認母親節活動日期'],['pre','check','確認預計人數'],['pre','check','規劃母親節主題下午茶菜單'],['w2','buy','訂購外購品項（蛋糕/點心）'],['w1','buy','採購食材'],['w1','check','確認花卉佈置與器具'],['d1','prep','製作手作點心'],['d1','pack','清點器具與食材'],['d0am','pack','確認所有食物與器具'],['d0','setup','佈置母親節茶點桌'],['d0','check','確認所有品項齊全'],['after','wrap','收拾與清理場地']]},
+  camp:{icon:'🏕️',label:'營會',appName:'營會伙食管家',sub:'營會伙食籌備工具',dateLabel:'營會日期',dateIcon:'🏕️',projPlaceholder:'例：2025 暑期青年營會',
+    phases:[{key:'pre',label:'一個月前',col:'p0'},{key:'w2',label:'兩週前',col:'p1'},{key:'w1',label:'一週前',col:'p2'},{key:'d1',label:'出發前一天',col:'p4'},{key:'d0am',label:'第一天',col:'p5'},{key:'d0',label:'營會進行中',col:'p6'},{key:'after',label:'收尾返家',col:'p7'}],
+    presets:[['pre','check','確認營會日期與地點'],['pre','check','確認參加人數'],['pre','check','規劃每日三餐菜單'],['pre','buy','完成食材比價採購計劃'],['w2','check','確認廚房設備與器具'],['w2','buy','訂購大量食材'],['w1','buy','採購耗材（紙碗/筷/手套等）'],['w1','check','確認伙食分工人員'],['d1','prep','食材前處理與分裝'],['d1','pack','清點所有器具與食材'],['d0am','setup','抵達營地，確認廚房'],['d0','setup','開始備餐'],['d0','check','確認三餐食材充足'],['after','wrap','清理廚房與餐具'],['after','wrap','歸還借用器具'],['after','wrap','結帳報帳']]},
+  custom:{icon:'✨',label:'自訂活動',appName:'活動茶點管家',sub:'活動茶點籌備工具',dateLabel:'活動日期',dateIcon:'📅',projPlaceholder:'例：小組聚餐、生日派對',
+    phases:[{key:'pre',label:'一個月前',col:'p0'},{key:'w2',label:'兩週前',col:'p1'},{key:'w1',label:'一週前',col:'p2'},{key:'d1',label:'前一天',col:'p4'},{key:'d0am',label:'當天早上',col:'p5'},{key:'d0',label:'活動進行中',col:'p6'},{key:'after',label:'收尾',col:'p7'}],
+    presets:[['pre','check','確認活動日期與場地'],['pre','check','確認預計人數'],['pre','check','規劃茶點菜單'],['w1','buy','採購食材與器具'],['w1','check','確認分工人員'],['d1','prep','製作點心'],['d0am','pack','確認所有食物與器具'],['d0','setup','佈置茶點桌'],['after','wrap','收拾與清理場地']]}
+};
 
-// FIX #3: define doLoadPresets as regular async function BEFORE addEventListener
-async function doLoadPresets(){const rows=PRESETS.map(p=>({project_id:P.id,phase:p[0],cat:p[1],text:p[2],done:false}));const{data}=await sb.from('todos').insert(rows).select();D.todos=[...D.todos,...(data||[])];renderTodos();toast('✓ 已載入 '+PRESETS.length+' 個預設待辦');}
+function getEventType(p){return EVENT_TYPES[p?.event_type]||EVENT_TYPES.wedding;}
+function eventTheme(){return getEventType(P);}
+
+const PHASES=EVENT_TYPES.wedding.phases;// 預設，會被 openProj 覆蓋
+let _PHASES=PHASES;
+const CATS=[{key:'buy',icon:'🛒',label:'採購'},{key:'prep',icon:'🍳',label:'製作準備'},{key:'check',icon:'📋',label:'確認'},{key:'pack',icon:'📦',label:'打包運送'},{key:'setup',icon:'🎪',label:'現場佈置'},{key:'wrap',icon:'✅',label:'收尾'}];
+
+async function doLoadPresets(){const presets=eventTheme().presets;const rows=presets.map(p=>({project_id:P.id,phase:p[0],cat:p[1],text:p[2],done:false}));const{data}=await sb.from('todos').insert(rows).select();D.todos=[...D.todos,...(data||[])];renderTodos();toast('✓ 已載入 '+presets.length+' 個預設待辦');}
 
 function parsePids(todo){try{const v=todo.person_id;if(!v)return[];if(v.startsWith('['))return JSON.parse(v);return[v];}catch{return[];}}
 
@@ -560,7 +585,7 @@ function renderTodos(){const done=D.todos.filter(t=>t.done).length;$('todo-prog'
   const filteredTodos=_todoFilter?D.todos.filter(t=>parsePids(t).includes(_todoFilter)):D.todos;
 
   if(!filteredTodos.length){el.innerHTML=filterHtml+'<div class="empty"><div class="ei">🗓️</div><div class="et">'+(D.todos.length?'這個人沒有被分配待辦':'還沒有待辦，點「＋ 新增待辦」或「載入預設清單」')+'</div></div>';return;}
-  el.innerHTML=filterHtml+PHASES.map(phase=>{const pt=filteredTodos.filter(t=>t.phase===phase.key);if(!pt.length)return'';let h='<div class="tlp"><div class="tlh '+phase.col+'"><span class="tlht">'+phase.label+'</span><span style="font-size:11px;opacity:.75">'+pt.filter(t=>t.done).length+'/'+pt.length+'</span></div><div class="tlb">';CATS.forEach(cat=>{const ct=pt.filter(t=>t.cat===cat.key);if(!ct.length)return;h+='<div class="tlch"><span class="tlcl">'+cat.icon+' '+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+ct.filter(t=>t.done).length+'/'+ct.length+'</span></div>';ct.forEach(todo=>{const pids=parsePids(todo);const persons=pids.map(pid=>D.persons.find(p=>p.id===pid)).filter(Boolean);h+='<div class="tdr" style="flex-wrap:wrap"><div style="display:flex;align-items:flex-start;gap:8px;width:100%"><div class="tdc'+(todo.done?' on':'')+'" data-action="toggle-todo" data-tid="'+todo.id+'">'+(todo.done?'✓':'')+'</div><div style="flex:1"><div class="tdt'+(todo.done?' done':'')+'">'+eH(todo.text)+'</div>'+(todo.date?'<div style="font-size:10px;color:var(--muted);margin-top:1px">📅 '+eH(todo.date)+'</div>':'')+'</div><button class="bx" style="font-size:13px" data-action="del-todo" data-tid="'+todo.id+'">×</button></div>';
+  el.innerHTML=filterHtml+_PHASES.map(phase=>{const pt=filteredTodos.filter(t=>t.phase===phase.key);if(!pt.length)return'';let h='<div class="tlp"><div class="tlh '+phase.col+'"><span class="tlht">'+phase.label+'</span><span style="font-size:11px;opacity:.75">'+pt.filter(t=>t.done).length+'/'+pt.length+'</span></div><div class="tlb">';CATS.forEach(cat=>{const ct=pt.filter(t=>t.cat===cat.key);if(!ct.length)return;h+='<div class="tlch"><span class="tlcl">'+cat.icon+' '+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+ct.filter(t=>t.done).length+'/'+ct.length+'</span></div>';ct.forEach(todo=>{const pids=parsePids(todo);const persons=pids.map(pid=>D.persons.find(p=>p.id===pid)).filter(Boolean);h+='<div class="tdr" style="flex-wrap:wrap"><div style="display:flex;align-items:flex-start;gap:8px;width:100%"><div class="tdc'+(todo.done?' on':'')+'" data-action="toggle-todo" data-tid="'+todo.id+'">'+(todo.done?'✓':'')+'</div><div style="flex:1"><div class="tdt'+(todo.done?' done':'')+'">'+eH(todo.text)+'</div>'+(todo.date?'<div style="font-size:10px;color:var(--muted);margin-top:1px">📅 '+eH(todo.date)+'</div>':'')+'</div><button class="bx" style="font-size:13px" data-action="del-todo" data-tid="'+todo.id+'">×</button></div>';
       // 多選人員
       h+='<div style="margin-left:26px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">';
       if(D.persons.length){D.persons.forEach(p=>{const sel=pids.includes(p.id);h+='<span class="tog'+(sel?' sel':'')+'" style="font-size:11px;padding:2px 8px;cursor:pointer" data-action="assign-todo-p" data-tid="'+todo.id+'" data-pid="'+p.id+'">'+eH(p.name)+'</span>';});}
@@ -608,8 +633,11 @@ function openModal(type,ctx){
     bEl.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:12px">輸入你的 Email，我們會寄送重設密碼連結。</div><label>Email</label><input id="m0" type="email" placeholder="your@email.com"><div class="br"><button class="btn bo" id="m-cancel">取消</button><button class="btn bp" id="m-confirm">寄送重設信</button></div>';
 
   }else if(type==='newProj'){
-    tEl.textContent='建立婚禮專案';
-    bEl.innerHTML='<label>專案名稱</label><input id="m0" placeholder="例：Sarah & John 婚禮茶點"><label>婚禮日期</label><input id="m-date" type="date"><label>預計賓客人數</label><input id="m-guests" type="number" value="150"><label>食物預算 NT$</label><input id="m-budget" type="number" value="25000"><div class="br"><button class="btn bo" id="m-cancel">取消</button><button class="btn bp" id="m-confirm">建立</button></div>';
+    tEl.textContent='建立新活動專案';
+    const typeOpts=Object.entries(EVENT_TYPES).map(([k,v])=>'<span class="tog'+(k==='wedding'?' sel':'')+'" data-etype="'+k+'" style="font-size:13px">'+v.icon+' '+v.label+'</span>').join('');
+    bEl.innerHTML='<label>活動類型</label><div class="tr" id="etype-row" style="flex-wrap:wrap;gap:6px">'+typeOpts+'</div><label>專案名稱</label><input id="m0" placeholder="例：Sarah & John 婚禮茶點"><label>活動日期</label><input id="m-date" type="date"><label>預計人數</label><input id="m-guests" type="number" value="150"><label>食物預算 NT$</label><input id="m-budget" type="number" value="25000"><div class="br"><button class="btn bo" id="m-cancel">取消</button><button class="btn bp" id="m-confirm">建立</button></div>';
+    // 選活動類型時自動更新 placeholder
+    bEl.querySelectorAll('#etype-row .tog').forEach(t=>t.addEventListener('click',()=>{bEl.querySelectorAll('#etype-row .tog').forEach(x=>x.classList.remove('sel'));t.classList.add('sel');const et=EVENT_TYPES[t.dataset.etype];if(et&&$('m0'))$('m0').placeholder=et.projPlaceholder;}));
 
   }else if(type==='joinProj'){
     tEl.textContent='加入婚禮專案';
@@ -712,7 +740,7 @@ async function confirmModal(){
   else if(type==='forgotPw'){return;}// 無帳號版本不需要
   else if(type==='joinProj'){const code=(mv('m0')||'').trim();if(!code){toast('請填入邀請碼');return;}const{data:proj}=await sb.from('projects').select('*').eq('invite_code',code).single();if(!proj){toast('找不到此邀請碼');return;}unlock(proj.id);closeModal();toast('✓ 已加入：'+proj.name);await openProj(proj.id,proj);}
 
-  else if(type==='newProj'){const n=mv('m0');if(!n){toast('請填入專案名稱');return;}const code=Math.random().toString(36).slice(2,10).toUpperCase();const{data,error}=await sb.from('projects').insert({name:n,wedding_date:mv('m-date')||null,guest_count:parseInt(mv('m-guests'))||150,budget:parseInt(mv('m-budget'))||25000,invite_code:code}).select().single();if(error){toast('建立失敗：'+error.message);return;}unlock(data.id);closeModal();toast('✓ 建立成功！邀請碼：'+code,4000);await openProj(data.id,data);}
+  else if(type==='newProj'){const n=mv('m0');if(!n){toast('請填入專案名稱');return;}const etSel=bEl.querySelector('#etype-row .tog.sel');const et=etSel?.dataset.etype||'wedding';const code=Math.random().toString(36).slice(2,10).toUpperCase();const{data,error}=await sb.from('projects').insert({name:n,event_type:et,wedding_date:mv('m-date')||null,guest_count:parseInt(mv('m-guests'))||150,budget:parseInt(mv('m-budget'))||25000,invite_code:code}).select().single();if(error){toast('建立失敗：'+error.message);return;}unlock(data.id);closeModal();toast('✓ 建立成功！邀請碼：'+code,4000);await openProj(data.id,data);}
 
   // FIX #1: pickCtr reads from ctr-name-input directly
   else if(type==='pickCtr'){const btn=document.getElementById('m-confirm');if(btn)btn.disabled=true;const eName=document.getElementById('ctr-name-input')?.value?.trim();if(!eName){toast('請填入容器名稱');if(btn)btn.disabled=false;return;}const selMode=document.querySelector('#ctr-mode-row .tog.sel');const mode=selMode?selMode.dataset.mode:'fixed';const fqty=parseInt(document.getElementById('ctr-fixed-qty')?.value)||1;const dish=D.dishes.find(d=>d.id===ctx);if(!dish){if(btn)btn.disabled=false;return;}if(!dish.containers)dish.containers=[];dish.containers.push({equipName:eName,qtyMode:mode,fixedQty:fqty});await sb.from('dishes').update({containers:dish.containers}).eq('id',ctx);renderEquip();closeModal();}
@@ -747,8 +775,8 @@ async function loadHomeProjList(){
   const el=$('home-proj-list');
   el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">載入中...</div>';
   const{data:projs}=await sb.from('projects').select('*').order('created_at',{ascending:false});
-  if(!projs?.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">還沒有婚禮專案<br>點下方按鈕建立第一個</div></div>';return;}
-  el.innerHTML=projs.map(p=>{const unlocked=isUnlocked(p.id);return'<div class="pc" data-pid="'+p.id+'" style="cursor:pointer;position:relative"><div class="pn">'+eH(p.name)+(unlocked?'<span style="font-size:10px;color:var(--sage-dark);margin-left:6px;background:#e8f0e4;padding:1px 6px;border-radius:6px">已解鎖</span>':'')+'</div><div class="pm">'+(p.wedding_date?'💒 '+p.wedding_date:'')+(p.guest_count?' 👥 '+p.guest_count+'人':'')+'<span style="font-size:11px;color:var(--muted);margin-left:6px">'+(unlocked?'點擊進入':'🔒 需邀請碼')+'</span></div></div>';}).join('');
+  if(!projs?.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">還沒有活動專案<br>點下方按鈕建立第一個</div></div>';return;}
+  el.innerHTML=projs.map(p=>{const unlocked=isUnlocked(p.id);const et=EVENT_TYPES[p.event_type]||EVENT_TYPES.wedding;return'<div class="pc" data-pid="'+p.id+'" style="cursor:pointer"><div class="pn">'+et.icon+' '+eH(p.name)+(unlocked?'<span style="font-size:10px;color:var(--sage-dark);margin-left:6px;background:#e8f0e4;padding:1px 6px;border-radius:6px">已解鎖</span>':'')+'</div><div class="pm"><span style="font-size:11px;background:var(--warm);padding:1px 6px;border-radius:6px;margin-right:6px">'+et.label+'</span>'+(p.wedding_date?et.dateIcon+' '+p.wedding_date:'')+(p.guest_count?' 👥 '+p.guest_count+'人':'')+'<span style="font-size:11px;color:var(--muted);margin-left:6px">'+(unlocked?'點擊進入':'🔒 需邀請碼')+'</span></div></div>';}).join('');
   el.querySelectorAll('.pc').forEach(c=>{c.addEventListener('click',async()=>{const pid=c.dataset.pid;const proj=projs.find(p=>p.id===pid);if(isUnlocked(pid)){await openProj(pid,proj);}else{openModal('enterCode',{pid,proj});}});});
 }
 
