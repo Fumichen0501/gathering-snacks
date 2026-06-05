@@ -16,13 +16,15 @@ html,body{height:100%;overflow:hidden}
 body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--text)}
 .screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--cream);z-index:10}
 .screen.hidden{display:none}
-#screen-auth{background:linear-gradient(160deg,var(--sage-dark),#2d3d28);justify-content:center;align-items:center;padding:40px 24px}
+#screen-auth{background:linear-gradient(160deg,var(--sage-dark),#2d3d28);justify-content:flex-start;align-items:center;padding:40px 24px;overflow-y:auto}
 .auth-logo{text-align:center;margin-bottom:40px}
 .auth-logo h1{font-family:'Noto Serif TC',serif;color:#fff;font-size:26px;letter-spacing:3px;margin-bottom:6px}
 .auth-logo p{color:rgba(255,255,255,.6);font-size:13px}
-.auth-card{background:rgba(255,255,255,.95);border-radius:20px;padding:28px 24px;width:100%;max-width:400px}
+.auth-card{background:rgba(255,255,255,.95);border-radius:20px;padding:28px 24px;width:100%;max-width:680px}
 .auth-tabs{display:flex;margin-bottom:22px;background:#f0ece4;border-radius:10px;padding:3px}
 .auth-tab{flex:1;padding:8px;text-align:center;border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted)}
+.home-tab{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;cursor:pointer;color:var(--muted);font-family:'Noto Sans TC',sans-serif;white-space:nowrap}
+.home-tab.sel{background:var(--sage-dark);color:#fff;border-color:var(--sage-dark)}
 .auth-tab.active{background:#fff;color:var(--sage-dark);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .af input{width:100%;padding:12px 14px;border:1.5px solid #ddd8cc;border-radius:10px;font-size:14px;margin-bottom:12px;background:var(--cream);font-family:'Noto Sans TC',sans-serif}
 .af input:focus{outline:none;border-color:var(--sage)}
@@ -243,7 +245,19 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
 <div class="screen hidden" id="screen-auth">
   <div class="auth-logo"><h1>🌿 聚會茶點管家</h1><p>婚禮・聖誕・復活節・營會・各式聚會</p></div>
   <div class="auth-card">
-    <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">選擇活動進入，或建立新活動</div>
+    <!-- 搜尋框 -->
+    <div style="position:relative;margin-bottom:14px">
+      <input id="home-search" type="text" placeholder="🔍 搜尋活動名稱..." style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--cream);font-size:14px;font-family:'Noto Sans TC',sans-serif;box-sizing:border-box">
+    </div>
+    <!-- Tab 篩選 -->
+    <div id="home-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <span class="home-tab sel" data-type="">全部</span>
+      <span class="home-tab" data-type="wedding">💒 婚禮</span>
+      <span class="home-tab" data-type="party">🎉 晚會</span>
+      <span class="home-tab" data-type="camp">🏕️ 營會</span>
+      <span class="home-tab" data-type="custom">✨ 自訂</span>
+    </div>
+    <!-- 專案列表 -->
     <div id="home-proj-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">載入中...</div></div>
     <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
       <button class="btn-auth" id="btn-new-proj-home">＋ 建立新活動專案</button>
@@ -979,14 +993,56 @@ function isUnlocked(pid){return getUnlocked().includes(pid);}
 function unlock(pid){const ids=getUnlocked();if(!ids.includes(pid))ids.push(pid);setUnlocked(ids);}
 
 // 載入所有專案顯示在首頁
+let _allProjs=[];
+let _homeFilter={type:'',q:''};
+
+function renderProjList(){
+  const el=$('home-proj-list');
+  let list=_allProjs;
+  // 篩選
+  if(_homeFilter.type)list=list.filter(p=>(p.event_type||'wedding')===_homeFilter.type);
+  if(_homeFilter.q){const q=_homeFilter.q.toLowerCase();list=list.filter(p=>p.name.toLowerCase().includes(q));}
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="ei">🔍</div><div class="et">'+((_allProjs.length&&(_homeFilter.type||_homeFilter.q))?'沒有符合的專案':'還沒有活動專案<br>點下方按鈕建立第一個')+'</div></div>';
+    return;
+  }
+  // 按年份分組（用 wedding_date 或 created_at）
+  const getYear=p=>p.wedding_date?p.wedding_date.slice(0,4):(p.created_at?p.created_at.slice(0,4):'');
+  const years=[...new Set(list.map(getYear).filter(Boolean))].sort((a,b)=>b-a);
+  const noYear=list.filter(p=>!getYear(p));
+  let h='';
+  years.forEach(yr=>{
+    const yp=list.filter(p=>getYear(p)===yr).sort((a,b)=>(b.wedding_date||'')>(a.wedding_date||'')?1:-1);
+    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);padding:8px 4px 4px;letter-spacing:1px">'+yr+'</div>';
+    yp.forEach(p=>{
+      const unlocked=isUnlocked(p.id);
+      const et=EVENT_TYPES[p.event_type]||EVENT_TYPES.wedding;
+      h+='<div class="pc" data-pid="'+p.id+'"><div class="pn">'+et.icon+' '+eH(p.name)+(unlocked?'<span style="font-size:10px;color:var(--sage-dark);margin-left:6px;background:#e8f0e4;padding:1px 6px;border-radius:6px">已解鎖</span>':'')+'</div><div class="pm"><span style="font-size:11px;background:var(--warm);padding:1px 6px;border-radius:6px;margin-right:6px">'+et.label+'</span>'+(p.wedding_date?et.dateIcon+' '+p.wedding_date:'')+(p.guest_count?' 👥 '+p.guest_count+'人':'')+'<span style="font-size:11px;color:var(--muted);margin-left:6px">'+(unlocked?'點擊進入':'🔒 需邀請碼')+'</span></div></div>';
+    });
+  });
+  if(noYear.length){
+    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);padding:8px 4px 4px;letter-spacing:1px">未設日期</div>';
+    noYear.forEach(p=>{
+      const unlocked=isUnlocked(p.id);const et=EVENT_TYPES[p.event_type]||EVENT_TYPES.wedding;
+      h+='<div class="pc" data-pid="'+p.id+'"><div class="pn">'+et.icon+' '+eH(p.name)+(unlocked?'<span style="font-size:10px;color:var(--sage-dark);margin-left:6px;background:#e8f0e4;padding:1px 6px;border-radius:6px">已解鎖</span>':'')+'</div><div class="pm"><span style="font-size:11px;background:var(--warm);padding:1px 6px;border-radius:6px;margin-right:6px">'+et.label+'</span>'+(p.guest_count?' 👥 '+p.guest_count+'人':'')+'<span style="font-size:11px;color:var(--muted);margin-left:6px">'+(unlocked?'點擊進入':'🔒 需邀請碼')+'</span></div></div>';
+    });
+  }
+  el.innerHTML=h;
+  el.querySelectorAll('.pc').forEach(c=>{c.addEventListener('click',async()=>{const pid=c.dataset.pid;const proj=_allProjs.find(p=>p.id===pid);if(isUnlocked(pid)){await openProj(pid,proj);}else{openModal('enterCode',{pid,proj});}});});
+}
+
 async function loadHomeProjList(){
   const el=$('home-proj-list');
   el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">載入中...</div>';
-  const{data:projs}=await sb.from('projects').select('*').order('created_at',{ascending:false});
-  if(!projs?.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><div class="et">還沒有活動專案<br>點下方按鈕建立第一個</div></div>';return;}
-  el.innerHTML=projs.map(p=>{const unlocked=isUnlocked(p.id);const et=EVENT_TYPES[p.event_type]||EVENT_TYPES.wedding;return'<div class="pc" data-pid="'+p.id+'" style="cursor:pointer"><div class="pn">'+et.icon+' '+eH(p.name)+(unlocked?'<span style="font-size:10px;color:var(--sage-dark);margin-left:6px;background:#e8f0e4;padding:1px 6px;border-radius:6px">已解鎖</span>':'')+'</div><div class="pm"><span style="font-size:11px;background:var(--warm);padding:1px 6px;border-radius:6px;margin-right:6px">'+et.label+'</span>'+(p.wedding_date?et.dateIcon+' '+p.wedding_date:'')+(p.guest_count?' 👥 '+p.guest_count+'人':'')+'<span style="font-size:11px;color:var(--muted);margin-left:6px">'+(unlocked?'點擊進入':'🔒 需邀請碼')+'</span></div></div>';}).join('');
-  el.querySelectorAll('.pc').forEach(c=>{c.addEventListener('click',async()=>{const pid=c.dataset.pid;const proj=projs.find(p=>p.id===pid);if(isUnlocked(pid)){await openProj(pid,proj);}else{openModal('enterCode',{pid,proj});}});});
+  const{data:projs}=await sb.from('projects').select('*').order('wedding_date',{ascending:false,nullsFirst:false});
+  _allProjs=projs||[];
+  renderProjList();
 }
+
+// Tab 切換
+document.getElementById('home-tabs').addEventListener('click',e=>{const t=e.target.closest('.home-tab');if(!t)return;document.querySelectorAll('.home-tab').forEach(x=>x.classList.remove('sel'));t.classList.add('sel');_homeFilter.type=t.dataset.type;renderProjList();});
+// 搜尋
+document.getElementById('home-search').addEventListener('input',e=>{_homeFilter.q=e.target.value.trim();renderProjList();});
 
 $('btn-new-proj-home').addEventListener('click',()=>openModal('newProj',null));
 $('btn-back').addEventListener('click',()=>{showScreen('screen-auth');loadHomeProjList();});
