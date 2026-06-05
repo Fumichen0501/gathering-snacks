@@ -199,9 +199,9 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
   /* 右側內容區 */
   #plan-content{
     flex:1;
-    display:block!important;
     overflow-y:auto;
   }
+  #plan-content.visible{display:block!important}
   #day-mode{
     flex:1;
     flex-direction:column;
@@ -366,7 +366,7 @@ const wdLabel=document.querySelector('label[for="inp-wdate"]');if(wdLabel)wdLabe
 $('btn-back').addEventListener('click',()=>{showScreen('screen-auth');loadHomeProjList();});
 $('mode-plan').addEventListener('click',()=>switchMode('plan'));
 $('mode-day').addEventListener('click',()=>switchMode('day'));
-function switchMode(m){$('mode-plan').classList.toggle('active',m==='plan');$('mode-day').classList.toggle('active',m==='day');$('plan-tabs').style.display=m==='plan'?'':'none';$('plan-content').style.display=m==='plan'?'':'none';$('day-mode').style.display=m==='day'?'flex':'none';$('day-mode').style.flexDirection='column';if(m==='day')renderDay();}
+function switchMode(m){$('mode-plan').classList.toggle('active',m==='plan');$('mode-day').classList.toggle('active',m==='day');$('plan-tabs').style.display=m==='plan'?'flex':'none';$('plan-content').style.display=m==='plan'?'block':'none';$('day-mode').style.display=m==='day'?'flex':'none';$('day-mode').style.flexDirection='column';if(m==='day')renderDay();}
 $('plan-tabs').addEventListener('click',e=>{const b=e.target.closest('.ti');if(b)switchTab(b.dataset.tab);});
 function switchTab(tab){document.querySelectorAll('.ti').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='pane-'+tab));if(tab==='compare')renderCompare();if(tab==='equip')renderEquip();if(tab==='procure')renderProcure();if(tab==='budget')renderBudget();if(tab==='team')renderTeam();if(tab==='todos')renderTodos();if(tab==='settings')renderSettings();}
 async function loadAll(){const pid=P.id;const[r1,r2,r3,r4,r5,r6,r7,r8,r9,r10]=await Promise.all([sb.from('dishes').select('*').eq('project_id',pid).order('created_at'),sb.from('ingredients').select('*').eq('project_id',pid).order('created_at'),sb.from('equip_custom').select('*').eq('project_id',pid).order('created_at'),sb.from('persons').select('*').eq('project_id',pid).order('created_at'),sb.from('tasks').select('*').eq('project_id',pid),sb.from('todos').select('*').eq('project_id',pid).order('created_at'),sb.from('venue_checks').select('*').eq('project_id',pid),sb.from('actuals').select('*').eq('project_id',pid),sb.from('day_tasks').select('*').eq('project_id',pid).order('sort_order'),sb.from('actuals').select('*').eq('project_id',pid).like('ref_key','extra_%')]);D.dishes=r1.data||[];D.ings=r2.data||[];D.equip=r3.data||[];D.persons=r4.data||[];D.tasks=r5.data||[];D.todos=r6.data||[];D.vc=r7.data||[];D.actuals={};(r8.data||[]).forEach(a=>{if(a.ref_key.endsWith('_buyer'))D.actuals[a.ref_key]=a.text_value||a.actual_value;else D.actuals[a.ref_key]=a.actual_value;});D.dayTasks=r9.data||[];D.extras=(r10.data||[]).map(a=>{try{return JSON.parse(a.actual_value);}catch{return null;}}).filter(Boolean);renderVenue();renderDishes();recalc();}
