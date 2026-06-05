@@ -726,6 +726,7 @@ function openModal(type,ctx){
 
 async function confirmModal(){
   const{type,ctx}=_mc;
+  const bEl=document.getElementById('modal-body');
 
   if(type==='confirmPresets'){closeModal();await doLoadPresets();}
 
