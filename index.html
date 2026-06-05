@@ -54,6 +54,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
 .ti.active{color:var(--sage-dark)}
 .tic{font-size:20px;line-height:1}
 .tcont{flex:1;overflow-y:auto;overscroll-behavior:contain}
+#project-body{display:flex;flex-direction:column-reverse;flex:1;overflow:hidden}
 .tp{display:none;padding:14px;padding-bottom:80px}
 .tp.active{display:block}
 .card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border)}
@@ -159,7 +160,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
   .mb{padding:7px 16px;font-size:12px}
 
   /* 主體區域：sidebar + content 並排 */
-  #project-body{display:flex;flex-direction:row;flex:1;overflow:hidden}
+  #project-body{flex-direction:row}
 
   /* 左側 sidebar：Tab 列 */
   #plan-tabs{
@@ -247,7 +248,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
       <button class="mb" id="mode-day">當天</button>
     </div>
   </div>
-  <div id="project-body" style="display:flex;flex-direction:column-reverse;flex:1;overflow:hidden">
+  <div id="project-body">
   <div id="plan-tabs" class="tbar">
     <button class="ti active" data-tab="venue"><div class="tic">🏛️</div>場地</button>
     <button class="ti" data-tab="dishes"><div class="tic">🍽️</div>餐點</button>
@@ -613,6 +614,7 @@ $('btn-add-daytask').addEventListener('click',()=>openModal('dayTask',null));
 
 // MODAL
 let _mc={};
+let _pendingProj=null;
 const mv=id=>{const el=document.getElementById(id);return el?el.value:null;};
 const getSelTog=rowId=>{const s=document.querySelector('#'+rowId+' .tog.sel');return s?s.dataset:{};};
 
@@ -635,6 +637,33 @@ function openModal(type,ctx){
     bEl.innerHTML='<label>活動類型</label><div class="tr" id="etype-row" style="flex-wrap:wrap;gap:6px">'+typeOpts+'</div><label>專案名稱</label><input id="m0" placeholder="例：Sarah & John 婚禮茶點"><label>活動日期</label><input id="m-date" type="date"><label>預計人數</label><input id="m-guests" type="number" value="150"><label>食物預算 NT$</label><input id="m-budget" type="number" value="25000"><div class="br"><button class="btn bo" id="m-cancel">取消</button><button class="btn bp" id="m-confirm">建立</button></div>';
     // 選活動類型時自動更新 placeholder
     bEl.querySelectorAll('#etype-row .tog').forEach(t=>t.addEventListener('click',()=>{bEl.querySelectorAll('#etype-row .tog').forEach(x=>x.classList.remove('sel'));t.classList.add('sel');const et=EVENT_TYPES[t.dataset.etype];if(et&&$('m0'))$('m0').placeholder=et.projPlaceholder;}));
+
+  }else if(type==='inviteReady'){
+    const proj=ctx;
+    const code=proj.invite_code||'';
+    tEl.textContent='🎉 專案建立成功！';
+    bEl.innerHTML=`
+      <div style="text-align:center;padding:8px 0 16px">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">${eH(proj.name)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:20px">把邀請碼分享給小組成員，讓大家一起協作</div>
+        <div style="background:var(--warm);border-radius:12px;padding:16px;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">邀請碼</div>
+          <div id="invite-ready-code" style="font-size:28px;font-weight:700;letter-spacing:6px;color:var(--sage-dark);font-family:monospace">${eH(code)}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp" style="flex:1" id="btn-copy-invite">📋 複製邀請碼</button>
+          <button class="btn bo" style="flex:1" id="btn-share-invite">🔗 分享連結</button>
+        </div>
+      </div>
+      <div class="br" style="margin-top:8px">
+        <button class="btn bp" id="m-confirm" style="width:100%">進入專案 →</button>
+      </div>`;
+    setTimeout(()=>{
+      const copyBtn=document.getElementById('btn-copy-invite');
+      const shareBtn=document.getElementById('btn-share-invite');
+      if(copyBtn)copyBtn.addEventListener('click',()=>{navigator.clipboard?.writeText(code).then(()=>toast('✓ 邀請碼已複製'));});
+      if(shareBtn)shareBtn.addEventListener('click',()=>{const url=location.origin+location.pathname+'?join='+code;if(navigator.share)navigator.share({title:'加入 '+proj.name,url});else navigator.clipboard?.writeText(url).then(()=>toast('✓ 分享連結已複製'));});
+    },100);
 
   }else if(type==='joinProj'){
     tEl.textContent='加入婚禮專案';
@@ -764,7 +793,8 @@ async function confirmModal(){
   else if(type==='forgotPw'){return;}// 無帳號版本不需要
   else if(type==='joinProj'){const code=(mv('m0')||'').trim();if(!code){toast('請填入邀請碼');return;}const{data:proj}=await sb.from('projects').select('*').eq('invite_code',code).single();if(!proj){toast('找不到此邀請碼');return;}unlock(proj.id);closeModal();toast('✓ 已加入：'+proj.name);await openProj(proj.id,proj);}
 
-  else if(type==='newProj'){const n=mv('m0');if(!n){toast('請填入專案名稱');return;}const etSel=bEl.querySelector('#etype-row .tog.sel');const et=etSel?.dataset.etype||'wedding';const code=Math.random().toString(36).slice(2,10).toUpperCase();const{data,error}=await sb.from('projects').insert({name:n,event_type:et,wedding_date:mv('m-date')||null,guest_count:parseInt(mv('m-guests'))||150,budget:parseInt(mv('m-budget'))||25000,invite_code:code}).select().single();if(error){toast('建立失敗：'+error.message);return;}unlock(data.id);closeModal();toast('✓ 建立成功！邀請碼：'+code,4000);await openProj(data.id,data);}
+  else if(type==='newProj'){const n=mv('m0');if(!n){toast('請填入專案名稱');return;}const etSel=bEl.querySelector('#etype-row .tog.sel');const et=etSel?.dataset.etype||'wedding';const code=Math.random().toString(36).slice(2,10).toUpperCase();const{data,error}=await sb.from('projects').insert({name:n,event_type:et,wedding_date:mv('m-date')||null,guest_count:parseInt(mv('m-guests'))||150,budget:parseInt(mv('m-budget'))||25000,invite_code:code}).select().single();if(error){toast('建立失敗：'+error.message);return;}unlock(data.id);_pendingProj=data;openModal('inviteReady',data);}
+  else if(type==='inviteReady'){closeModal();if(_pendingProj){await openProj(_pendingProj.id,_pendingProj);_pendingProj=null;}}
 
   // FIX #1: pickCtr reads from ctr-name-input directly
   else if(type==='pickCtr'){const btn=document.getElementById('m-confirm');if(btn)btn.disabled=true;const eName=document.getElementById('ctr-name-input')?.value?.trim();if(!eName){toast('請填入容器名稱');if(btn)btn.disabled=false;return;}const selMode=document.querySelector('#ctr-mode-row .tog.sel');const mode=selMode?selMode.dataset.mode:'fixed';const fqty=parseInt(document.getElementById('ctr-fixed-qty')?.value)||1;const dish=D.dishes.find(d=>d.id===ctx);if(!dish){if(btn)btn.disabled=false;return;}if(!dish.containers)dish.containers=[];dish.containers.push({equipName:eName,qtyMode:mode,fixedQty:fqty});await sb.from('dishes').update({containers:dish.containers}).eq('id',ctx);renderEquip();closeModal();}
