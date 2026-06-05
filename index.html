@@ -50,6 +50,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
 .mb.active{background:#fff;color:var(--sage-dark);border-color:#fff;font-weight:600}
 .tbar{background:#fff;border-top:1px solid var(--border);display:flex;padding-bottom:var(--sb);flex-shrink:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tbar::-webkit-scrollbar{display:none}
+/* 手機版當天頁面：單欄上下排 */
+#day-inner{flex-direction:column !important}
+#day-left{border-right:none !important;border-bottom:1px solid var(--border);padding-bottom:0 !important}
 .ti{flex:0 0 auto;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px 6px;cursor:pointer;border:none;background:none;color:var(--muted);font-size:10px;font-family:'Noto Sans TC',sans-serif;gap:3px}
 .ti.active{color:var(--sage-dark)}
 .tic{font-size:20px;line-height:1}
@@ -203,6 +206,8 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
     flex:1;
     flex-direction:column;
   }
+  #day-inner{flex-direction:row !important}
+  #day-left{border-right:1px solid var(--border) !important;border-bottom:none !important}
   .tp{padding:24px 32px;padding-bottom:40px;max-width:900px}
   .tp.active{display:block}
 
@@ -321,12 +326,20 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
       <div class="card"><div class="ch"><div class="ct">🗑️ 危險區域</div></div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">刪除專案後所有資料將無法復原，請謹慎操作。</div><button class="btn bs" style="width:100%;background:#c0392b;color:#fff;border:none" id="btn-delete-proj">刪除此專案</button></div>
     </div>
   </div>
-  <div id="day-mode" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:14px;padding-bottom:20px">
-    <div class="ds"><div class="dsh">✅ 當天工作清單 <button class="btn bs" style="background:rgba(255,255,255,.2);color:#fff;border:none" id="btn-add-daytask">＋</button></div><div class="dsb" id="day-tasks"></div></div>
-    <div class="ds"><div class="dsh">🧺 器具攜帶清單</div><div class="dsb" id="day-equip"></div></div>
-    <div class="ds"><div class="dsh">🍽️ 擺盤提醒</div><div class="dsb" id="day-plate"></div></div>
-    <div class="ds" id="day-venue-section"><div class="dsh" id="day-venue-toggle" style="cursor:pointer;user-select:none">🏛️ 場地確認結果 <span id="day-venue-arrow" style="font-size:11px;opacity:.7">▼ 展開</span></div><div class="dsb" id="day-venue-body" style="display:none"></div></div>
-    <div class="ds"><div class="dsh">📞 聯絡人</div><div class="dsb" id="day-contacts"></div></div>
+  <div id="day-mode" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+    <div id="day-inner" style="display:flex;flex:1;overflow:hidden;gap:0">
+      <!-- 左欄：工作清單 -->
+      <div id="day-left" style="flex:1;overflow-y:auto;padding:14px;padding-bottom:20px;border-right:1px solid var(--border)">
+        <div id="day-todo-left"></div>
+      </div>
+      <!-- 右欄：器具/擺盤/場地/聯絡人 -->
+      <div id="day-right" style="flex:1;overflow-y:auto;padding:14px;padding-bottom:20px">
+        <div class="ds"><div class="dsh">🧺 器具攜帶清單</div><div class="dsb" id="day-equip"></div></div>
+        <div class="ds"><div class="dsh">🍽️ 擺盤提醒</div><div class="dsb" id="day-plate"></div></div>
+        <div class="ds" id="day-venue-section"><div class="dsh" id="day-venue-toggle" style="cursor:pointer;user-select:none">🏛️ 場地確認結果 <span id="day-venue-arrow" style="font-size:11px;opacity:.7">▼ 展開</span></div><div class="dsb" id="day-venue-body" style="display:none"></div></div>
+        <div class="ds"><div class="dsh">📞 聯絡人</div><div class="dsb" id="day-contacts"></div></div>
+      </div>
+    </div>
   </div>
   </div><!-- /project-body -->
 </div>
@@ -616,7 +629,41 @@ $('btn-delete-proj').addEventListener('click',()=>openModal('deleteProj',null));
 $('btn-add-contact').addEventListener('click',()=>openModal('contact',null));
 
 // DAY MODE
-function renderDay(){const dEl=$('day-tasks');dEl.innerHTML=D.dayTasks.length?D.dayTasks.map(t=>'<div class="cr" style="padding:10px 12px"><div class="cb'+(t.done?' on':'')+'" data-action="toggle-day" data-id="'+t.id+'">'+(t.done?'✓':'')+'</div><div style="flex:1"><div style="font-size:13px'+(t.done?';text-decoration:line-through;color:var(--muted)':'')+'">'+eH(t.text)+'</div>'+(t.time_note?'<div style="font-size:11px;color:var(--muted)">⏰ '+eH(t.time_note)+'</div>':'')+'</div></div>').join(''):'<div style="padding:12px;font-size:12px;color:var(--muted)">還沒有當天工作</div>';const s={};D.dishes.forEach(d=>{(d.containers||[]).forEach(c=>{if(!s[c.equipName])s[c.equipName]=0;s[c.equipName]+=c.qtyMode==='per'?(d.qty||1):(c.fixedQty||1);});});// 也把 equip_custom 裡不在 containers 的借用器具加進來
+function renderDay(){
+  // 左欄：從待辦取出當天相關 phase
+  const dayPhases=['d0am','d0','after'];
+  const dayTodos=D.todos.filter(t=>dayPhases.includes(t.phase));
+  const tlEl=$('day-todo-left');
+  if(tlEl){
+    if(!dayTodos.length){
+      tlEl.innerHTML='<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center;margin-top:20px">待辦頁沒有「當天早上」「當天進行中」「收尾」的項目</div>';
+    } else {
+      const phaseMap={d0am:'⏰ 當天早上',d0:'▶ 當天進行中',after:'🏁 收尾離場'};
+      const phaseColors={d0am:'#5a7a9a',d0:'#4a6240',after:'#7a6040'};
+      let h='';
+      dayPhases.forEach(pk=>{
+        const pts=dayTodos.filter(t=>t.phase===pk);
+        if(!pts.length)return;
+        const done=pts.filter(t=>t.done).length;
+        h+='<div class="ds"><div class="dsh" style="background:'+phaseColors[pk]+'">'+phaseMap[pk]+' <span style="font-size:11px;opacity:.75">'+done+'/'+pts.length+'</span></div><div class="dsb">';
+        // 按 cat 分組
+        const cats=[...new Set(pts.map(t=>t.cat))];
+        cats.forEach(cat=>{
+          const catMeta=CATS.find(c=>c.key===cat)||{icon:'📌',label:cat};
+          const ct=pts.filter(t=>t.cat===cat);
+          h+='<div style="padding:4px 12px 2px;background:#f8f5f0;border-bottom:1px solid #f0ece4;font-size:11px;color:var(--muted);font-weight:600">'+catMeta.icon+' '+catMeta.label+'</div>';
+          ct.forEach(todo=>{
+            const pids=parsePids(todo);
+            const names=pids.map(pid=>D.persons.find(p=>p.id===pid)?.name).filter(Boolean);
+            h+='<div class="cr" style="padding:10px 12px"><div class="tdc'+(todo.done?' on':'')+'" data-action="toggle-daytodo" data-tid="'+todo.id+'">'+(todo.done?'✓':'')+'</div><div style="flex:1"><div style="font-size:13px'+(todo.done?';text-decoration:line-through;color:var(--muted)':'')+'">'+eH(todo.text)+'</div>'+(names.length?'<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">'+names.map(n=>'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--warm);color:var(--sage-dark)">'+eH(n)+'</span>').join('')+'</div>':'')+'</div></div>';
+          });
+        });
+        h+='</div></div>';
+      });
+      tlEl.innerHTML=h;
+    }
+  }
+const s={};D.dishes.forEach(d=>{(d.containers||[]).forEach(c=>{if(!s[c.equipName])s[c.equipName]=0;s[c.equipName]+=c.qtyMode==='per'?(d.qty||1):(c.fixedQty||1);});});// 也把 equip_custom 裡不在 containers 的借用器具加進來
 D.equip.filter(e=>e.src_type==='borrow'&&!s[e.name]).forEach(e=>{s[e.name]=e.qty||1;});
 const srcLabel={borrow:'借',buy:'買',store:'店家附',paid:'付出'};
 const srcColor={borrow:'#7b5ea7',buy:'#2a6a2a',store:'#b07a20',paid:'#555'};
@@ -649,9 +696,9 @@ else{
 // 場地確認摘要
 const vb=$('day-venue-body');if(vb){const okCount=D.vc.filter(v=>v.status==='ok').length;const noItems=D.vc.filter(v=>v.status==='no');const totalCount=D.vc.length;const arrow=$('day-venue-arrow');if(arrow)arrow.textContent=okCount+'/'+totalCount+' 已確認'+(noItems.length?' · ⚠️ '+noItems.length+'項待處理':' ▼ 展開');if(D.vc.length){let h='';D.vc.forEach(v=>{const isOk=v.status==='ok';const isNo=v.status==='no';h+='<div style="padding:10px 14px;border-bottom:1px solid #f0ece4;display:flex;align-items:flex-start;gap:10px"><div style="width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;'+(isOk?'background:#e8f3e8;color:var(--sage-dark)':isNo?'background:#fce8e8;color:#b04040':'background:#f0ece4;color:var(--muted)')+'">'+(isOk?'✓':isNo?'✗':'?')+'</div><div style="flex:1"><div style="font-size:13px;'+(isOk?'color:var(--sage-dark)':isNo?'color:#b04040':'color:var(--muted)')+'">'+eH(v.item)+'</div>'+(isNo&&v.note?'<div style="font-size:11px;color:#b04040;margin-top:3px">📝 '+eH(v.note)+'</div>':'')+'</div></div>';});vb.innerHTML=h;}else{vb.innerHTML='<div style="padding:12px;font-size:12px;color:var(--muted)">請先在「場地」確認各項目</div>';}}}
 $('day-venue-toggle').addEventListener('click',()=>{const b=$('day-venue-body');const a=$('day-venue-arrow');if(!b)return;const open=b.style.display!=='none';b.style.display=open?'none':'block';if(!open){const okCount=D.vc.filter(v=>v.status==='ok').length;const noItems=D.vc.filter(v=>v.status==='no');if(a)a.textContent=okCount+'/'+D.vc.length+' 已確認'+(noItems.length?' · ⚠️ '+noItems.length+'項待處理':' ▲ 收起');}else{const okCount=D.vc.filter(v=>v.status==='ok').length;const noItems=D.vc.filter(v=>v.status==='no');if(a)a.textContent=okCount+'/'+D.vc.length+' 已確認'+(noItems.length?' · ⚠️ '+noItems.length+'項待處理':' ▼ 展開');}});
-$('day-tasks').addEventListener('click',async e=>{const b=e.target.closest('[data-action="toggle-day"]');if(!b)return;const t=D.dayTasks.find(t=>t.id===b.dataset.id);if(!t)return;t.done=!t.done;await sb.from('day_tasks').update({done:t.done}).eq('id',t.id);renderDay();});
+$('day-todo-left').addEventListener('click',async e=>{const b=e.target.closest('[data-action="toggle-daytodo"]');if(!b)return;const t=D.todos.find(t=>t.id===b.dataset.tid);if(!t)return;t.done=!t.done;await sb.from('todos').update({done:t.done}).eq('id',b.dataset.tid);renderDay();renderTodos();});
 $('day-equip').addEventListener('click',e=>{const b=e.target.closest('[data-action="toggle-equip"]');if(!b)return;b.classList.toggle('on');b.textContent=b.classList.contains('on')?'✓':'';});
-$('btn-add-daytask').addEventListener('click',()=>openModal('dayTask',null));
+// btn-add-daytask removed
 
 // MODAL
 let _mc={};
