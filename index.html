@@ -199,6 +199,10 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
     display:block!important;
     overflow-y:auto;
   }
+  #day-mode{
+    flex:1;
+    flex-direction:column;
+  }
   .tp{padding:24px 32px;padding-bottom:40px;max-width:900px}
   .tp.active{display:block}
 
@@ -265,7 +269,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
   </div>
   <div class="tcont" id="plan-content">
     <div class="tp active" id="pane-venue">
-      <div class="card"><div class="ch"><div class="ct">🏛️ 場地確認清單</div><div id="venue-prog" style="font-size:11px;color:var(--muted)"></div></div><div id="venue-list"></div></div>
+      <div class="card" style="padding:0;overflow:hidden"><div class="ch" id="venue-collapse-hdr" style="padding:14px;cursor:pointer;user-select:none"><div class="ct">🏛️ 場地確認清單</div><div style="display:flex;align-items:center;gap:8px"><div id="venue-prog" style="font-size:11px;color:var(--muted)"></div><span id="venue-arrow" style="font-size:12px;color:var(--muted)">▼</span></div></div><div id="venue-list" style="padding:0 14px 14px"></div></div>
     </div>
     <div class="tp" id="pane-dishes">
       <div class="card"><div class="ch"><div class="ct">👐 手作點心</div><button class="btn bp bs" id="btn-add-hm">＋ 新增</button></div><div id="list-hm"><div class="empty"><div class="ei" style="font-size:24px">👐</div><div class="et">還沒有手作點心</div></div></div></div>
@@ -317,7 +321,7 @@ label{display:block;font-size:11px;color:var(--muted);margin:10px 0 3px}
       <div class="card"><div class="ch"><div class="ct">🗑️ 危險區域</div></div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">刪除專案後所有資料將無法復原，請謹慎操作。</div><button class="btn bs" style="width:100%;background:#c0392b;color:#fff;border:none" id="btn-delete-proj">刪除此專案</button></div>
     </div>
   </div>
-  <div id="day-mode" style="display:none;flex:1;overflow-y:auto;padding:14px;padding-bottom:20px">
+  <div id="day-mode" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:14px;padding-bottom:20px">
     <div class="ds"><div class="dsh">✅ 當天工作清單 <button class="btn bs" style="background:rgba(255,255,255,.2);color:#fff;border:none" id="btn-add-daytask">＋</button></div><div class="dsb" id="day-tasks"></div></div>
     <div class="ds"><div class="dsh">🧺 器具攜帶清單</div><div class="dsb" id="day-equip"></div></div>
     <div class="ds"><div class="dsh">🍽️ 擺盤提醒</div><div class="dsb" id="day-plate"></div></div>
@@ -349,14 +353,16 @@ const wdLabel=document.querySelector('label[for="inp-wdate"]');if(wdLabel)wdLabe
 $('btn-back').addEventListener('click',()=>{showScreen('screen-auth');loadHomeProjList();});
 $('mode-plan').addEventListener('click',()=>switchMode('plan'));
 $('mode-day').addEventListener('click',()=>switchMode('day'));
-function switchMode(m){$('mode-plan').classList.toggle('active',m==='plan');$('mode-day').classList.toggle('active',m==='day');$('plan-tabs').style.display=m==='plan'?'':'none';$('plan-content').style.display=m==='plan'?'':'none';$('day-mode').style.display=m==='day'?'flex':'none';if(m==='day')renderDay();}
+function switchMode(m){$('mode-plan').classList.toggle('active',m==='plan');$('mode-day').classList.toggle('active',m==='day');$('plan-tabs').style.display=m==='plan'?'':'none';$('plan-content').style.display=m==='plan'?'':'none';$('day-mode').style.display=m==='day'?'flex':'none';$('day-mode').style.flexDirection='column';if(m==='day')renderDay();}
 $('plan-tabs').addEventListener('click',e=>{const b=e.target.closest('.ti');if(b)switchTab(b.dataset.tab);});
 function switchTab(tab){document.querySelectorAll('.ti').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='pane-'+tab));if(tab==='compare')renderCompare();if(tab==='equip')renderEquip();if(tab==='procure')renderProcure();if(tab==='budget')renderBudget();if(tab==='team')renderTeam();if(tab==='todos')renderTodos();if(tab==='settings')renderSettings();}
 async function loadAll(){const pid=P.id;const[r1,r2,r3,r4,r5,r6,r7,r8,r9,r10]=await Promise.all([sb.from('dishes').select('*').eq('project_id',pid).order('created_at'),sb.from('ingredients').select('*').eq('project_id',pid).order('created_at'),sb.from('equip_custom').select('*').eq('project_id',pid).order('created_at'),sb.from('persons').select('*').eq('project_id',pid).order('created_at'),sb.from('tasks').select('*').eq('project_id',pid),sb.from('todos').select('*').eq('project_id',pid).order('created_at'),sb.from('venue_checks').select('*').eq('project_id',pid),sb.from('actuals').select('*').eq('project_id',pid),sb.from('day_tasks').select('*').eq('project_id',pid).order('sort_order'),sb.from('actuals').select('*').eq('project_id',pid).like('ref_key','extra_%')]);D.dishes=r1.data||[];D.ings=r2.data||[];D.equip=r3.data||[];D.persons=r4.data||[];D.tasks=r5.data||[];D.todos=r6.data||[];D.vc=r7.data||[];D.actuals={};(r8.data||[]).forEach(a=>{if(a.ref_key.endsWith('_buyer'))D.actuals[a.ref_key]=a.text_value||a.actual_value;else D.actuals[a.ref_key]=a.actual_value;});D.dayTasks=r9.data||[];D.extras=(r10.data||[]).map(a=>{try{return JSON.parse(a.actual_value);}catch{return null;}}).filter(Boolean);renderVenue();renderDishes();recalc();}
 
 // VENUE
 const VI=['確認場地可使用廚房','確認場地有冰箱可存放食材','確認場地有洗水槽','確認場地有電源插座','確認場地有桌子可擺設茶點','確認場地允許帶外食','確認垃圾處理方式','確認進場時間與離場時間'];
-async function renderVenue(){const pid=P.id;for(const item of VI){if(!D.vc.find(v=>v.item===item)){const{data}=await sb.from('venue_checks').insert({project_id:pid,item,checked:false,note:'',status:''}).select().single();if(data)D.vc.push(data);}}const done=D.vc.filter(v=>v.status==='ok').length;$('venue-prog').textContent=done+'/'+VI.length+' 已確認';$('venue-list').innerHTML=VI.map(item=>{const vc=D.vc.find(v=>v.item===item)||{status:'',note:''};const isOk=vc.status==='ok';const isNo=vc.status==='no';return'<div style="padding:12px 0;border-bottom:1px solid #f0ece4"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:13px;font-weight:500;'+(isOk?'color:var(--sage-dark)':isNo?'color:#b04040;text-decoration:line-through':'')+'">'+(isOk?'✓ ':isNo?'✗ ':'')+eH(item)+'</div><div style="display:flex;gap:6px;flex-shrink:0"><button class="vc-btn'+(isOk?' vc-ok-sel':'')+'" data-action="vc-status" data-item="'+eA(item)+'" data-status="ok">✓ 可以</button><button class="vc-btn'+(isNo?' vc-no-sel':'')+'" data-action="vc-status" data-item="'+eA(item)+'" data-status="no">✗ 不行</button></div></div>'+(isNo?'<textarea style="margin-top:8px;font-size:12px;padding:7px 10px;border-radius:8px;width:100%;border:1.5px solid #e0a0a0;background:#fff8f8;resize:vertical" rows="2" placeholder="解決方案或備註..." data-action="vc-note" data-item="'+eA(item)+'">'+eH(vc.note||'')+'</textarea>':'')+'</div>';}).join('');}
+async function renderVenue(){const pid=P.id;for(const item of VI){if(!D.vc.find(v=>v.item===item)){const ins={project_id:pid,item,checked:false,note:''};try{const{data}=await sb.from('venue_checks').insert({...ins,status:''}).select().single();if(data)D.vc.push(data);}catch{const{data}=await sb.from('venue_checks').insert(ins).select().single();if(data)D.vc.push(data);}}}D.vc.forEach(v=>{if(v.status===undefined||v.status===null)v.status=v.checked?'ok':'';});const done=D.vc.filter(v=>v.status==='ok').length;$('venue-prog').textContent=done+'/'+VI.length+' 已確認';$('venue-list').innerHTML=VI.map(item=>{const vc=D.vc.find(v=>v.item===item)||{status:'',note:''};const isOk=vc.status==='ok';const isNo=vc.status==='no';return'<div style="padding:12px 0;border-bottom:1px solid #f0ece4"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;font-size:13px;font-weight:500;'+(isOk?'color:var(--sage-dark)':isNo?'color:#b04040;text-decoration:line-through':'')+'">'+(isOk?'✓ ':isNo?'✗ ':'')+eH(item)+'</div><div style="display:flex;gap:6px;flex-shrink:0"><button class="vc-btn'+(isOk?' vc-ok-sel':'')+'" data-action="vc-status" data-item="'+eA(item)+'" data-status="ok">✓ 可以</button><button class="vc-btn'+(isNo?' vc-no-sel':'')+'" data-action="vc-status" data-item="'+eA(item)+'" data-status="no">✗ 不行</button></div></div>'+(isNo?'<textarea style="margin-top:8px;font-size:12px;padding:7px 10px;border-radius:8px;width:100%;border:1.5px solid #e0a0a0;background:#fff8f8;resize:vertical" rows="2" placeholder="解決方案或備註..." data-action="vc-note" data-item="'+eA(item)+'">'+eH(vc.note||'')+'</textarea>':'')+'</div>';}).join('');}
+// 場地清單摺疊
+(function(){let collapsed=false;const hdr=$('venue-collapse-hdr');if(!hdr)return;hdr.addEventListener('click',()=>{collapsed=!collapsed;const list=$('venue-list');const arrow=$('venue-arrow');if(list)list.style.display=collapsed?'none':'block';if(arrow)arrow.textContent=collapsed?'▶':'▼';});})();
 $('pane-venue').addEventListener('click',async e=>{const b=e.target.closest('[data-action="vc-status"]');if(!b)return;const vc=D.vc.find(v=>v.item===b.dataset.item);if(!vc)return;const newStatus=vc.status===b.dataset.status?'':b.dataset.status;vc.status=newStatus;await sb.from('venue_checks').update({status:newStatus,checked:newStatus==='ok'}).eq('id',vc.id);renderVenue();});
 $('pane-venue').addEventListener('change',async e=>{const el=e.target;if(el.dataset.action!=='vc-note')return;const vc=D.vc.find(v=>v.item===el.dataset.item);if(!vc)return;vc.note=el.value;await sb.from('venue_checks').update({note:el.value}).eq('id',vc.id);});
 
